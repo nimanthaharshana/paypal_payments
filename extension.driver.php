@@ -246,7 +246,8 @@
 		{
 			$countries_tld = array(
 				'Australia'			 => 'com.au',
-				'United Kingdom' => 'co.uk',
+				// 'United Kingdom' => 'co.uk',
+				'United Kingdom' => 'com',
 				'United States'	 => 'com',
 			);
 
