@@ -209,6 +209,7 @@
 					{
 						if ($key == 'payment_date') $val = strftime('%Y-%m-%d %H:%M:%S', strtotime($val));
 						$log[$key] = $val;
+						
 					}
 				}
 				
@@ -223,10 +224,42 @@
 				{
 					$entry = $entries[0];
 					$section_id = $entry->get('section_id');
+					$member = current($entries)->getData('103')['relation_id'];
+					
 					$fields = Symphony::Database()->fetch("
 						SELECT `id`, `label` FROM `tbl_fields` WHERE `parent_section` = '$section_id'
 					");
-			
+					
+					
+						
+				//Execute the update-member-payment event
+				if($log['payment_status'] =='Completed') {
+					
+					$log_date  = $log['payment_date'];
+					$paid_until = strtotime("+12 months", strtotime($log_date));				
+					$post_data = array(		
+							'id' => $member,
+							'fields[paid-until]' => $paid_until,
+							'action[update-member-payment]' => 1
+					);
+					
+							$url = 'https://www.ioassn.org/join-now/';
+							$ch = curl_init();
+							curl_setopt($ch, CURLOPT_URL, $url);
+                            curl_setopt($ch, CURLOPT_FAILONERROR, 1); 
+                            curl_setopt($ch, CURLOPT_RETURNTRANSFER,1);
+                            curl_setopt($ch, CURLOPT_TIMEOUT, 3);
+							curl_setopt($ch, CURLOPT_PROTOCOLS, CURLPROTO_HTTPS);
+
+                           // curl_setopt($ch, CURLOPT_POST, 1);
+                            curl_setopt($ch, CURLOPT_POSTFIELDS,$post_data);
+                            // receive server response ...
+                            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                            curl_setopt($ch,CURLOPT_SSL_VERIFYPEER, false);
+                            $server_output = curl_exec ($ch);
+                            curl_close ($ch);
+				}
+
 					foreach ($fields as $field)
 					{
 						$label = $field['label'];
@@ -240,11 +273,15 @@
 								)
 							);
 						}
-					}	
+					}
+					
 					# Transfom and move out
 					$entry->commit();
 					$output->setAttribute('result', 'success');
 					$output->appendChild(new XMLElement('message', 'PayPal data logged and reconciled.'));
+					
+
+					
 				} else {  
 					$output->setAttribute('result', 'error');
 					$output->appendChild(new XMLElement('message', 'No matching entry, could not reconcile payment data.'));
@@ -259,6 +296,10 @@
 						`payment_status` = '{$log['payment_status']}'
 				");
 				Symphony::Database()->insert($log, 'tbl_paypalpayments_logs');
+				
+
+				
+				
 			}  
 			return $output;
 		}
